@@ -30,8 +30,8 @@ exports.create = async (req, res) => {
         folder: "03_supermarket/users",
       });
 
- image = result.secure_url
- public_id = result.public_id
+      image = result.secure_url;
+      public_id = result.public_id;
     }
 
     const data = [name, email, hash, phone, image, public_id, location];
@@ -98,73 +98,58 @@ exports.update = async (req, res) => {
     res.status(500).json(err);
   }
 };
-exports.delete=(req,res)=>{
+exports.delete = (req, res) => {
+  const id = req.params.id;
 
- const id=req.params.id
+  userModel.getUserById(id, async (err, data) => {
+    if (err) return res.status(500).json(err);
 
- userModel.getUserById(id, async(err,data)=>{
+    const public_id = data[0].image_public_id;
 
- if(err) return res.status(500).json(err)
+    if (public_id) {
+      await cloudinary.uploader.destroy(public_id);
+    }
 
- const public_id=data[0].image_public_id
+    userModel.deleteUser(id, (err, result) => {
+      if (err) return res.status(500).json(err);
 
- if(public_id){
- await cloudinary.uploader.destroy(public_id)
- }
+      res.json({
+        message: "user deleted",
+      });
+    });
+  });
+};
+exports.search = (req, res) => {
+  const keyword = req.query.q;
 
- userModel.deleteUser(id,(err,result)=>{
+  userModel.searchUsers(keyword, (err, data) => {
+    if (err) return res.status(500).json(err);
 
- if(err) return res.status(500).json(err)
+    res.json(data);
+  });
+};
 
- res.json({
- message:"user deleted"
- })
+exports.login = (req, res) => {
+  const { email, password } = req.body;
 
- })
+  userModel.getUserByEmail(email, async (err, data) => {
+    if (err) return res.status(500).json(err);
 
- })
+    if (data.length === 0) {
+      return res.json({ message: "User not found" });
+    }
 
-}
-exports.search = (req,res)=>{
+    const user = data[0];
 
- const keyword = req.query.q
+    const match = await bcrypt.compare(password, user.password);
 
- userModel.searchUsers(keyword,(err,data)=>{
+    if (!match) {
+      return res.json({ message: "Wrong password" });
+    }
 
-  if(err) return res.status(500).json(err)
-
-  res.json(data)
-
- })
-
-}
-
-
-exports.login = (req,res)=>{
-
- const {email,password} = req.body
-
- userModel.getUserByEmail(email, async (err,data)=>{
-
-  if(err) return res.status(500).json(err)
-
-  if(data.length === 0){
-   return res.json({message:"User not found"})
-  }
-
-  const user = data[0]
-
-  const match = await bcrypt.compare(password,user.password)
-
-  if(!match){
-   return res.json({message:"Wrong password"})
-  }
-
-  res.json({
-   message:"Login success",
-   user:user
-  })
-
- })
-
-}
+    res.json({
+      message: "Login success",
+      user: user,
+    });
+  });
+};
