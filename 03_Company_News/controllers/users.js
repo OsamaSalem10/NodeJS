@@ -18,56 +18,71 @@ exports.getOne = (req, res) => {
 };
 
 exports.create = async (req, res) => {
-    try {
-        const { name, email, password, phone, role, status } = req.body;
-        const validationErrors = [];
+  let public_id = "";
+  let image = "";
 
-        const errors = validationResult(req);
+  try {
+    const { name, email, password, phone, role, status } = req.body;
 
-        if (!errors.isEmpty()) {
-            return res.status(400).json({
-                errors: errors.array(),
-            });
-        }
-        const hash = await bcrypt.hash(password, 10);
+    const errors = validationResult(req);
 
-        let image = "";
-        let public_id = "";
-        if (req.file) {
-            const result = await cloudinary.uploader.upload(req.file.path, {
-                folder: "03_Company_News/users",
-            });
-
-            image = result.secure_url;
-            public_id = result.public_id;
-        }
-
-        const data = [name, email, hash, phone, image, role, status, public_id];
-
-        userModel.createUser(data, (err, result) => {
-            if (err) {
-                console.error(err);
-                return res.status(500).json({
-                    message: "Database error",
-                    error: err.message,
-                });
-            }
-
-            res.json({
-                message: "User created successfully",
-                image: image,
-            });
-        });
-    } catch (error) {
-        console.error(error);
-
-        res.status(500).json({
-            message: "Server error",
-            error: error.message,
-        });
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        errors: errors.array(),
+      });
     }
-};
 
+    const hash = await bcrypt.hash(password, 10);
+
+    if (req.file) {
+      const result = await cloudinary.uploader.upload(req.file.path, {
+        folder: "03_Company_News/users",
+      });
+
+      image = result.secure_url;
+      public_id = result.public_id;
+    }
+
+    const data = [name, email, hash, phone, image, role, status, public_id];
+
+    userModel.createUser(data, async (err, result) => {
+      if (err) {
+
+        // حذف الصورة إذا فشل الإدخال
+        if (public_id) {
+          await cloudinary.uploader.destroy(public_id);
+        }
+
+        // الإيميل موجود مسبقًا
+        if (err.code === "ER_DUP_ENTRY") {
+          return res.status(400).json({
+            message: "Email already exists",
+          });
+        }
+
+        return res.status(500).json({
+          message: "Database error",
+        });
+      }
+
+      res.json({
+        message: "User created successfully",
+        image,
+      });
+    });
+
+  } catch (error) {
+
+    // حذف الصورة إذا حدث أي خطأ
+    if (public_id) {
+      await cloudinary.uploader.destroy(public_id);
+    }
+
+    res.status(500).json({
+      message: error.message,
+    });
+  }
+};
 exports.update = async (req, res) => {
     try {
         const id = req.params.id;
@@ -81,7 +96,7 @@ exports.update = async (req, res) => {
                 errors: errors.array(),
             });
         }
-        console.log(req.body)
+       
         userModel.getUser(id, async (err, data) => {
             if (err) return res.status(500).json(err);
 

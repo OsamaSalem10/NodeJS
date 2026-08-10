@@ -44,9 +44,9 @@ exports.createCategoryValidation = [
     .notEmpty()
     .withMessage("Name is required"),
 
-  body("status")
+  body("description")
     .notEmpty()
-    .withMessage("Status is required"),
+    .withMessage("Description is required"),
 
 
     body("image").custom((value, { req }) => {
@@ -56,7 +56,7 @@ exports.createCategoryValidation = [
       return true;
     }),
   ];
-exports.createProductValidation = [
+exports.createCompaniesValidation = [
   body("name")
     .notEmpty()
     .withMessage("Name is required"),
@@ -67,24 +67,43 @@ exports.createProductValidation = [
   body("description")
     .notEmpty()
     .withMessage("Description is required"),
-body("price")
+body("website")
   .notEmpty()
-  .withMessage("Price is required")
-  .isFloat({ min: 0 })
-  .withMessage("Price must be a valid positive number"),
+  .withMessage("Website is required")
+  .isURL()
+  .withMessage("Invalid website URL"),
+body("email")
+  .notEmpty()
+  .withMessage("Email is required")
+  .isEmail()
+  .withMessage("Invalid email"),
+body("phone")
+  .notEmpty()
+  .withMessage("Phone is required")
+  .isMobilePhone()
+  .withMessage("Invalid phone number"),
+body("address")
+  .notEmpty()
+  .withMessage("Address is required"),
+body("city")
+  .notEmpty()
+  .withMessage("City is required"),
+body("country")
+  .notEmpty()
+  .withMessage("Country is required"),
 
-body("discount")
-  .optional({ values: "falsy" }) 
-  .isFloat({ min: 0, max: 100 })
-  .withMessage("Discount must be between 0 and 100"),
-  body("status")
-    .notEmpty()
-    .withMessage("Status is required"),
 
 
-    body("image").custom((value, { req }) => {
+
+    body("logo").custom((value, { req }) => {
       if (!req.file) {
-        throw new Error("Image is required");
+        throw new Error("Logo is required");
+      }
+      return true;
+    }),
+    body("cover").custom((value, { req }) => {
+      if (!req.file) {
+        throw new Error("Cover is required");
       }
       return true;
     }),

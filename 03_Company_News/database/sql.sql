@@ -19,8 +19,9 @@ CREATE TABLE users (
 CREATE TABLE categories (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
-    icon VARCHAR(255),
+    image VARCHAR(255),
     description TEXT,
+    image_public_id VARCHAR(255),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -39,6 +40,9 @@ CREATE TABLE companies (
     address VARCHAR(255),
     city VARCHAR(100),
     country VARCHAR(100),
+  logo_public_id VARCHAR(255),
+  cover_public_id VARCHAR(255),
+
     verified BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 

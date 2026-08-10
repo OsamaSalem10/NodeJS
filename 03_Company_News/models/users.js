@@ -1,4 +1,3 @@
-const { login } = require("../../02_SuperMarket/controllers/users");
 const db = require("../config/db");
 
 
