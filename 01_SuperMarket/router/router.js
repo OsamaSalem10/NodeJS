@@ -1,93 +1,107 @@
 const express = require("express");
-const router = express.Router();
-const {createUserValidation , createCategoryValidation , createProductValidation} = require("../middleware/validation");
-const auth = require("../middleware/auth");
+const { createUserValidation ,updateUserValidation , createProductValidation ,createCategoryValidation} = require("../middleware/validation");
+
 const { upload } = require("../middleware/upload");
 
+const router = express.Router();
 
-/* Routes for users */
-router.get("/users", require("../controllers/users").getAll);
-router.get("/users/:id", require("../controllers/users").getOne);
+/* ============================= Get ============================= */
+
+router.get(
+  "/users",
+  require("../controllers/get").getAllUsers
+);
+
+router.get(
+  "/products",
+  require("../controllers/get").getAllProducts
+);
+
+router.get(
+  "/categories",
+  require("../controllers/get").getAllCategories
+);
+
+router.get(
+  "/carts",
+  require("../controllers/get").getAllCarts
+);
+
+router.get(
+  "/orders",
+  require("../controllers/get").getAllOrders
+);
+
+router.get(
+  "/order-items",
+  require("../controllers/get").getAllOrderItems
+);
+
+router.get(
+  "/comments",
+  require("../controllers/get").getAllComments
+);
+
+router.get(
+  "/wishlist",
+  require("../controllers/get").getAllWishlist
+);
+
+/* ============================= Post ============================= */
+
 router.post(
   "/users",
   upload.single("image"),
   createUserValidation,
-  require("../controllers/users").create,
+  require("../controllers/post").addUser
 );
-router.get("/users/:id", require("../controllers/users").getOne);
-router.put(
-  "/users/:id",
+
+router.post(
+  "/products",
   upload.single("image"),
-  createUserValidation,
-  require("../controllers/users").update,
+    createProductValidation,
+  require("../controllers/post").addProduct
 );
-
-router.delete("/users/:id", require("../controllers/users").delete);
-router.get("/search", require("../controllers/users").search);
-router.post("/login", require("../controllers/users").login);
-
-/* categories */
-router.get("/categories", require("../controllers/categories").getAll);
-router.get("/categories/:id", require("../controllers/categories").getOne);
 router.post(
   "/categories",
   upload.single("image"),
   createCategoryValidation,
-  require("../controllers/categories").create,
+  require("../controllers/post").addCategory
 );
-router.put(
-  "/categories/:id",
-  upload.single("image"),
-   createUserValidation,
-  require("../controllers/categories").update,
-);
-router.delete("/categories/:id", require("../controllers/categories").delete);
 
-/* products  */
-router.get("/products", require("../controllers/products").getAll);
-router.get("/products/:id", require("../controllers/products").getOne);
-router.post(
-  "/products",
+/* ============================= Update ============================= */
+
+router.put(
+  "/users/:id",
   upload.single("image"),
-  createProductValidation,
-  require("../controllers/products").create,
+  updateUserValidation,
+  require("../controllers/edit").updateUser
 );
+
 router.put(
   "/products/:id",
   upload.single("image"),
-  require("../controllers/products").update,
+  require("../controllers/edit").updateProduct
 );
-router.delete("/products/:id", require("../controllers/products").delete);
-router.get("/search-products", require("../controllers/products").search);
-/* orders */
-router.post("/orders",require("../controllers/orders").create);
-router.get("/orders",require("../controllers/orders").index);
-router.get("/orders/:userId",require("../controllers/orders").userOrders);
-router.put("/orders/:id",require("../controllers/orders").updateStatus);
 
-/* order items */
-router.post("/order-items", require("../controllers/order_items").create);
-router.get("/order-items/:id", require("../controllers/order_items").getOne);
-router.delete("/order-items/:id", require("../controllers/order_items").delete);
+router.put(
+  "/categories/:id",
+  upload.single("image"),
+  require("../controllers/edit").updateCategory
+);
+/* ============================= Delete ============================= */
 
+router.delete(
+  "/users/:id",
+  require("../controllers/delete").deleteUser
+);
 
-/* reviews */
-router.get("/reviews", require("../controllers/reviews").getAll);
-router.get("/reviews/:id", require("../controllers/reviews").getOne);
-router.post("/reviews", require("../controllers/reviews").create);
-router.put("/reviews/:id", require("../controllers/reviews").update);
-router.delete("/reviews/:id", require("../controllers/reviews").delete);
-
-
-
-
-/* cart */
-
-
-router.post("/cart",require("../controllers/cart").create);
-router.get("/cart/:userId",require("../controllers/cart").index);
-router.put("/cart/:id",require("../controllers/cart").update);
-router.delete("/cart/:id",require("../controllers/cart.js").delete);
-
-
+router.delete(
+  "/products/:id",
+  require("../controllers/delete").deleteProduct
+);
+router.delete(
+  "/categories/:id",
+  require("../controllers/delete").deleteCategory
+);
 module.exports = router;

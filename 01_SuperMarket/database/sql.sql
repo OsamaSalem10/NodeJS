@@ -19,6 +19,7 @@ CREATE TABLE categories (
  name VARCHAR(100),
  image VARCHAR(255),
  image_public_id VARCHAR(255),
+  status ENUM('Active','Inactive') DEFAULT 'Active',
  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );  
 CREATE TABLE products (
@@ -37,6 +38,16 @@ CREATE TABLE products (
     FOREIGN KEY (category_id)
     REFERENCES categories(id)
     ON DELETE CASCADE
+);
+CREATE TABLE wishlist (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id int NOT NULL,
+    product_id int NOT NULL,
+     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+
+    UNIQUE(user_id, product_id)
+
 );
 
 CREATE TABLE carts (
@@ -114,6 +125,16 @@ CREATE TABLE reviews (
  rating INT,
  comment TEXT,
  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+ FOREIGN KEY (user_id) REFERENCES users(id),
+ FOREIGN KEY (product_id) REFERENCES products(id)
+);
+
+CREATE TABLE comments (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id int NOT NULL,
+    product_id int NOT NULL,
+    comment varchar(255) NOT NULL,
+     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
  FOREIGN KEY (user_id) REFERENCES users(id),
  FOREIGN KEY (product_id) REFERENCES products(id)
 );

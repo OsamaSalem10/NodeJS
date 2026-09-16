@@ -38,7 +38,34 @@ exports.createUserValidation = [
       return true;
     }),
   ];
+exports.updateUserValidation = [
+  body("name")
+    .trim()
+    .notEmpty()
+    .withMessage("Name is required"),
 
+  body("email")
+    .trim()
+    .notEmpty()
+    .withMessage("Email is required")
+    .isEmail()
+    .withMessage("Invalid email"),
+
+  body("phone")
+    .trim()
+    .notEmpty()
+    .withMessage("Phone is required"),
+
+  body("location")
+    .trim()
+    .notEmpty()
+    .withMessage("Location is required"),
+
+  body("description")
+    .trim()
+    .notEmpty()
+    .withMessage("Description is required"),
+];
 exports.createCategoryValidation = [
   body("name")
     .notEmpty()
@@ -74,10 +101,10 @@ body("price")
   .withMessage("Price must be a valid positive number"),
 
 body("discount")
-  .optional({ values: "falsy" }) 
-  .isFloat({ min: 0, max: 100 })
+    .notEmpty()
+  .withMessage("Discount is required")
   .withMessage("Discount must be between 0 and 100"),
-  body("status")
+body("status")
     .notEmpty()
     .withMessage("Status is required"),
 

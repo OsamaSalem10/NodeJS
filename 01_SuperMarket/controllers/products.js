@@ -37,7 +37,6 @@ exports.create = async (req, res) => {
     }
     const data = [name, description, price, image, public_id, category_id  , discount  ,status ] ;
     productModel.createProduct(data, (err, result) => {
-      console.log(err)
       if (err) return res.json(err);
       res.json(result);
     });
