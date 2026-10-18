@@ -1,78 +1,94 @@
 const db = require("../config/db");
-/* عرض السلة */
-const getCart = (userId, cb) => {
-  const sql = `
-  SELECT
-    carts.id AS cart_id,
-    carts.quantity,
 
-    users.id AS user_id,
-    users.name AS user_name,
-    users.email,
-    users.phone,
+class Cart {
+  constructor(user_id, product_id, quantity) {
+    this.user_id = user_id;
+    this.product_id = product_id;
+    this.quantity = quantity;
+  }
 
-    products.id AS product_id,
-    products.name AS product_name,
-    products.price,
-    products.discount,
-    products.image
+  // ================= CREATE ================= //
 
-FROM carts
+  async create() {
+    const sql = `
+      INSERT INTO carts
+      (
+        user_id,
+        product_id,
+        quantity
+      )
+      VALUES (?, ?, ?)
+    `;
 
-JOIN users
-    ON carts.user_id = users.id
+    const [result] = await db.promise().query(sql, [
+      this.user_id,
+      this.product_id,
+      this.quantity
+    ]);
 
-JOIN products
-    ON carts.product_id = products.id
+    return result;
+  }
 
-WHERE carts.user_id = ?
-  `;
+  // ================= FIND ALL ================= //
 
-  db.query(sql, [userId], cb);
-};
-/* إضافة منتج */
+  static async findAll() {
+    const sql = `
+      SELECT *
+      FROM carts
+      ORDER BY id DESC
+    `;
 
+    const [result] = await db.promise().query(sql);
 
-const addToCart = (data, cb) => {
-  const sql = `
-    INSERT INTO carts (user_id, product_id, quantity)
-    VALUES (?, ?, ?)
-    ON DUPLICATE KEY UPDATE
-    quantity = quantity + VALUES(quantity)
-  `;
+    return result;
+  }
 
-  db.query(sql, data, cb);
-};
-/* تعديل الكمية */
-const updateQuantity = (quantity, id, cb) => {
-  db.query(
-    "UPDATE carts SET quantity=? WHERE id=?",
-    [quantity, id],
-    cb
-  );
-};
-/* حذف منتج */
-const deleteItem = (id, cb) => {
-  db.query(
-    "DELETE FROM carts WHERE id=?",
-    [id],
-    cb
-  );
-};
+  // ================= FIND BY ID ================= //
 
-/* حذف السلة */
-const clearCart = (userId, cb) => {
-  db.query(
-    "DELETE FROM carts WHERE user_id=?",
-    [userId],
-    cb
-  );
-};
+  static async findById(id) {
+    const sql = `
+      SELECT *
+      FROM carts
+      WHERE id = ?
+    `;
 
-module.exports = {
-    addToCart,
-    clearCart,
-    getCart,
-    updateQuantity,
-    deleteItem
+    const [result] = await db.promise().query(sql, [id]);
+
+    return result[0];
+  }
+
+  // ================= UPDATE ================= //
+
+  async update(id) {
+    const sql = `
+      UPDATE carts
+      SET
+        user_id = ?,
+        product_id = ?,
+        quantity = ?
+      WHERE id = ?
+    `;
+
+    const [result] = await db.promise().query(sql, [
+      this.user_id,
+      this.product_id,
+      this.quantity,
+      id
+    ]);
+
+    return result;
+  }
+    // DELETE
+  static async delete(id) {
+    const sql = `
+      DELETE FROM carts
+      WHERE id = ?
+    `;
+
+    const [result] = await db.promise().query(sql, [id]);
+
+    return result;
+  }
 }
+
+module.exports = Cart;

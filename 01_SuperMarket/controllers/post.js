@@ -343,3 +343,67 @@ exports.addCategory = async (req, res) => {
     });
   }
 }
+exports.addWishlist = async (req, res) => {
+  try {
+    // =========================
+    // 1. Validation
+    // =========================
+
+    const errors = validationResult(req);
+
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        status: 400,
+        errors: errors.array(),
+      });
+    }
+
+    // =========================
+    // 2. Get body data
+    // =========================
+
+    const {
+      user_id,
+      product_id,
+    } = req.body;
+
+    // =========================
+    // 3. Database Data
+    // =========================  
+
+    const data = [
+      user_id,
+      product_id
+    ];
+
+    // =========================
+    // 4. Create Wishlist
+    // =========================
+      model.createWishlist(data, async (err, result) => {
+      if (err) {
+        console.error("Create Wishlist Error:", err);
+
+        return res.status(500).json({
+          status: 500,
+          message: "Internal Server Error",
+        });
+      }
+
+      return res.status(201).json({
+        status: 201,
+        message: "Successfully created wishlist",
+        result: {
+          id: result.insertId,
+          user_id,
+          product_id,
+        },
+      });
+    });
+  } catch (error) {
+
+    return res.status(500).json({
+      status: 500,
+      message: "Internal Server Error",
+    });
+  } 
+}

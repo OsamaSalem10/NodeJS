@@ -1,40 +1,97 @@
 const db = require("../config/db");
 
-const getCategories = (cb) => {
-  db.query("SELECT * FROM categories", cb);
-};
+class Category {
+  constructor(name, image, image_public_id, status) {
+    this.name = name;
+    this.image = image;
+    this.image_public_id = image_public_id;
+    this.status = status;
+  }
 
-const getCategory = (id, cb) => {
-  db.query("SELECT * FROM categories WHERE id=?", [id], cb);
-};
+  // ==================== CREATE ====================
+  async create() {
+    const sql = `
+      INSERT INTO categories
+      (
+        name,
+        image,
+        image_public_id,
+        status
+      )
+      VALUES (?, ?, ?, ?)
+    `;
 
-const createCategory = (data, cb) => {
-  const sql = `
- INSERT INTO categories
- (name , image, image_public_id , status)
- VALUES (?, ?, ? , ?)
- `; 
-    db.query(sql, data, cb);
-};
+    const [result] = await db.promise().query(sql, [
+      this.name,
+      this.image,
+      this.image_public_id,
+      this.status
+    ]);
 
-const updateCategory = (data, id, cb) => {
-  const sql = `
- UPDATE categories
- SET name=?, image=?, image_public_id=? , status=?
- WHERE id=?
- `;
-  db.query(sql, [...data, id], cb);
-};  
+    return result;
+  }
 
-const deleteCategory = (id, cb) => {
-  db.query("DELETE FROM categories WHERE id=?", [id], cb);
-};
+  // ==================== READ ALL ====================
+  static async findAll() {
+    const sql = `
+      SELECT *
+      FROM categories
+      ORDER BY id DESC
+    `;
 
-module.exports = {
-  getCategories,
-  getCategory,
-  createCategory,
-  updateCategory,
-  deleteCategory
-};  
+    const [result] = await db.promise().query(sql);
 
+    return result;
+  }
+
+  // ==================== READ ONE ====================
+  static async findById(id) {
+    const sql = `
+      SELECT *
+      FROM categories
+      WHERE id = ?
+      LIMIT 1
+    `;
+
+    const [result] = await db.promise().query(sql, [id]);
+
+    return result[0];
+  }
+
+  // ==================== UPDATE ====================
+  async update(id) {
+    const sql = `
+      UPDATE categories
+      SET
+        name = ?,
+        image = ?,
+        image_public_id = ?,
+        status = ?
+      WHERE id = ?
+    `;
+
+    const [result] = await db.promise().query(sql, [
+      this.name,
+      this.image,
+      this.image_public_id,
+      this.status,
+      id
+    ]);
+
+    return result;
+  }
+
+  // ==================== DELETE ====================
+  static async delete(id) {
+    const sql = `
+      DELETE FROM categories
+      WHERE id = ?
+    `;
+
+    const [result] = await db.promise().query(sql, [id]);
+
+    return result;
+  }
+}
+
+module.exports = Category;

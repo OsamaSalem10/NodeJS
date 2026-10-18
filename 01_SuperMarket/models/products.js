@@ -1,56 +1,132 @@
 const db = require("../config/db");
 
-const getProducts = (cb) => {
-  db.query("SELECT * FROM products", cb);
-};
+class Products {
+  constructor(
+    name,
+    category_id,
+    description,
+    price,
+    discount,
+    image,
+    image_public_id,
+    status
+  ) {
+    this.name = name;
+    this.category_id = category_id;
+    this.description = description;
+    this.price = price;
+    this.discount = discount;
+    this.image = image;
+    this.image_public_id = image_public_id;
+    this.status = status;
+  }
 
-const getProduct = (id, cb) => {
-  db.query("SELECT * FROM products WHERE id=?", [id], cb);
-};
+  // CREATE
+  async create() {
+    const sql = `
+      INSERT INTO products
+      (
+        category_id,
+        name,
+        description,
+        price,
+        image,
+        image_public_id,
+        discount,
+        status
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `;
 
-const createProduct = (data, cb) => {
-  const sql = `
-    INSERT INTO products
-    (
+    const [result] = await db.promise().query(sql, [
+      this.category_id,
+      this.name,
+      this.description,
+      this.price,
+      this.image,
+      this.image_public_id,
+      this.discount,
+      this.status
+    ]);
+
+    return result;
+  }
+
+  // READ ALL
+  static async findAll() {
+    const sql = `
+      SELECT *
+      FROM products
+      ORDER BY id DESC
+    `;
+
+    const [result] = await db.promise().query(sql);
+    return result;
+  }
+
+  // READ ONE
+  static async findById(id) {
+    const sql = `
+      SELECT *
+      FROM products
+      WHERE id = ?
+    `;
+
+    const [result] = await db.promise().query(sql, [id]);
+    return result[0];
+  }
+
+  // UPDATE
+  static async update(
+    id,
+    name,
+    category_id,
+    description,
+    price,
+    image,
+    image_public_id,
+    discount,
+    status
+  ) {
+    const sql = `
+      UPDATE products
+      SET
+        name = ?,
+        category_id = ?,
+        description = ?,
+        price = ?,
+        image = ?,
+        image_public_id = ?,
+        discount = ?,
+        status = ?
+      WHERE id = ?
+    `;
+
+    const [result] = await db.promise().query(sql, [
       name,
+      category_id,
       description,
       price,
       image,
       image_public_id,
-      category_id,
       discount,
-      status
-    )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `;
+      status,
+      id
+    ]);
 
-  db.query(sql, data, cb);
-};
+    return result;
+  }
 
-const updateProduct = (data, id, cb) => {
-  const sql = `
- UPDATE products
-    SET name=?, description=?, price=?, image=?, image_public_id=?, category_id=?, discount=? ,status=?   
-    WHERE id=?
-`;
-  db.query(sql, [...data, id], cb);
-};
+  // DELETE
+  static async delete(id) {
+    const sql = `
+      DELETE FROM products
+      WHERE id = ?
+    `;
 
-const deleteProduct = (id, cb) => {
-  db.query("DELETE FROM products WHERE id=?", [id], cb);
-};
-const searchProducts = (keyword, cb) => {
-  const sql = `
-    SELECT * FROM products WHERE name LIKE ? OR description LIKE ?
-  `;
-  db.query(sql, [`%${keyword}%`, `%${keyword}%`], cb);
-};
+    const [result] = await db.promise().query(sql, [id]);
+    return result;
+  }
+}
 
-module.exports = {
-  getProducts,
-  getProduct,
-  createProduct,
-  updateProduct,
-  deleteProduct,
-  searchProducts
-};
+module.exports = Products;

@@ -1,240 +1,299 @@
-const connection = require("../config/db")
-const cloudinary = require("../config/cloudinary");
+
 const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
-const { error } = require("./error")
-exports.getAllUsers = (req, res) => {
-  let data = []
-  let sql = 'select * from users'
-  connection.query(sql, (err, result) => {
-    if (err) {
-      res.json({ err: err, status: 500, error: "Internal Server Error" });
-    } else if (result.length === 0) {
-      res.json({ status: 201, massage: "No Users Found" });
-    } else {
-      data = { users: result }
-      let sql = `select * from wishlist`;
-      connection.query(sql, (err, result) => {
-        data.users?.forEach((user) => {
-          user.wishlist = result ? result.filter((u) => u.user_id === parseInt(user.id)) : []
-        })
-        let sql = `select * from carts`;
-        connection.query(sql, (err, result) => {
-          data.users?.forEach((user) => {
-            user.carts = result ? result.filter((u) => u.user_id === parseInt(user.id)) : []
-          })
-          res.json({ status: 200, massage: "Successfully", result: data.users });
 
-        })
-      })
-    }
+const User = require("../models/users");
+const cloudinary = require("../config/cloudinary");
 
-  })
-}
+class UserController {
 
-// =========================  Create User =================================== //
-exports.createUser = async (req, res) => {
-  let name = req.body.name;
-  let email = req.body.email;
-  let password = req.body.password;
-  let phone = req.body.phone;
-  let authorization = req.body.authorization;
-  let image = req.body.image || req.file;
-  let cloudinary_id = null;
-  if (name === "") {
-    res.json(error("Enter your name"));
-  } else if (email === "") {
-    res.json(error("Enter your Email"));
-  } else if (password === "") {
-    res.json(error("Enter your Password"));
-  } else if (phone === "") {
-    res.json(error("Enter your Phone"));
-  } else if (!image) {
-    res.json(error("Enter your Image"));
-  } else {
-    image = req.file
-    if (image = req.file) {
-      image = await cloudinary.uploader.upload(req.file.path, { folder: "Store Mobile Server/users" });
-      cloudinary_id = image?.public_id;
-      image = image?.secure_url;
-    } else {
-      image = req.body.image
-    }
-    password = bcrypt.hashSync(password, Number("salt"));
-    let sql = `INSERT INTO users (name, email ,password, image  ,phone ,authorization ,cloudinary_id) 
-        VALUES('${name}', '${email}' ,'${password}','${image}' ,'${phone}' , '${authorization === "" ? "user" : authorization}' , '${cloudinary_id}')`;
-    connection.query(sql, async (err, result) => {
-      let data = { name: name, email: email, password: password, image: image, phone: phone, authorization: authorization, cloudinary_id: cloudinary_id };
+  // ================= CREATE =================
 
-      if (err) {
-        let public_id = data.cloudinary_id === null ? "null" : data.cloudinary_id.replace('Store Mobile Server/users/g', '')
-        await cloudinary.uploader.destroy(public_id).then((res) => { imageUrl = res });
-        res.json({ err: err, status: 500, error: "Internal Server Error", massage: `You have entered invalid email ${data.email}` });
-      } else {
-        res.json({ massage: "successfully Create user", status: 200, result: data })
+  static async create(req, res) {
+    try {
+      const {
+        name,
+        email,
+        password,
+        phone,
+        location,
+        description
+      } = req.body;
+      let image = null;
+      let image_public_id = null;
+
+      if (!name || !email || !password) {
+        return res.status(400).json({
+          message: "Name, email and password are required"
+        });
       }
-    })
+
+      if (!req.file) {
+        return res.status(400).json({
+          message: "Image is required"
+        });
+      }
+
+      // Check email
+      const existingUser =
+        await User.findByEmail(email);
+
+      if (existingUser) {
+        return res.status(409).json({
+          message: "Email already exists"
+        });
+      }
+
+      // Hash password
+      const hashedPassword =
+        await bcrypt.hash(password, 10);
+
+      // =========================
+      // Upload Image
+      // =========================
+
+      if (req.file) {
+        const result = await cloudinary.uploader.upload(req.file.path, {
+          folder: "01_supermarket/users",
+        });
+
+        image = result.secure_url;
+        image_public_id = result.public_id;
+      }
+      // Create object
+      const user = new User(
+        name,
+        email,
+        hashedPassword,
+        phone,
+        location,
+        image,
+        image_public_id,
+        description
+      );
+
+      const result =
+        await user.create();
+
+      res.status(201).json({
+        status: 201,
+        message: "User created successfully",
+        result: {
+          id: result.insertId,
+          name,
+          email,
+          phone,
+          location,
+          image,
+          image_public_id,
+          description
+        }
+      });
+
+    } catch (error) {
+
+      console.error(error);
+
+      res.status(500).json({
+        status: 500,
+        message: error.message
+      });
+    }
+  }
+
+
+  // ================= READ ALL =================
+
+  static async getAll(req, res) {
+    try {
+
+      const users =
+        await User.findAll();
+
+      res.status(200).json({
+        status: 200,
+        result: users
+      });
+
+    } catch (error) {
+
+      res.status(500).json({
+        status: 500,
+        message: error.message
+      });
+    }
+  }
+
+
+  // ================= READ ONE =================
+
+  static async getById(req, res) {
+    try {
+
+      const user =
+        await User.findById(req.params.id);
+
+      if (!user) {
+        return res.status(404).json({
+          message: "User not found"
+        });
+      }
+
+      res.status(200).json({
+        status: 200,
+        result: user
+      });
+
+    } catch (error) {
+
+      res.status(500).json({
+        status: 500,
+        message: error.message
+      });
+    }
+  }
+
+
+  // ================= UPDATE =================
+
+  static async update(req, res) {
+    try {
+
+      const { id } = req.params;
+
+      const {
+        name,
+        email,
+        phone,
+        location,
+        description
+      } = req.body;
+
+      const oldUser =
+        await User.findById(id);
+
+      if (!oldUser) {
+        return res.status(404).json({
+          message: "User not found"
+        });
+      }
+
+      // Check email only if changed
+      if (email !== oldUser.email) {
+
+        const emailUser =
+          await User.findByEmail(email);
+
+        if (emailUser) {
+          return res.status(409).json({
+            message: "Email already exists"
+          });
+        }
+      }
+
+      let image =
+        oldUser.image;
+
+      let image_public_id =
+        oldUser.image_public_id;
+
+
+      // New image?
+      if (req.file) {
+
+        // Delete old image
+        if (oldUser.image_public_id) {
+          await cloudinary.uploader.destroy(
+            oldUser.image_public_id
+          );
+        }
+
+         // =========================
+      // Upload Image
+      // =========================
+
+      if (req.file) {
+        const result = await cloudinary.uploader.upload(req.file.path, {
+          folder: "01_supermarket/users",
+        });
+
+        image = result.secure_url;
+        image_public_id = result.public_id;
+      }
+
+ 
+      }
+
+
+      await User.update(
+        id,
+        name,
+        email,
+        phone,
+        location,
+        image,
+        image_public_id,
+        description
+      );
+
+      res.status(200).json({
+        status: 200,
+        message: "User updated successfully"
+      });
+
+    } catch (error) {
+
+      console.error(error);
+
+      res.status(500).json({
+        status: 500,
+        message: error.message
+      });
+    }
+  }
+
+
+  // ================= DELETE =================
+
+  static async delete(req, res) {
+    try {
+
+      const { id } = req.params;
+
+      const user =
+        await User.findById(id);
+
+      if (!user) {
+        return res.status(404).json({
+          message: "User not found"
+        });
+      }
+
+      // Delete Cloudinary image
+      if (user.image_public_id) {
+
+        await cloudinary.uploader.destroy(
+          user.image_public_id
+        );
+      }
+
+      // Delete MySQL user
+      await User.delete(id);
+
+      res.status(200).json({
+        status: 200,
+        message: "User deleted successfully"
+      });
+
+    } catch (error) {
+
+      console.error(error);
+
+      res.status(500).json({
+        status: 500,
+        message: error.message
+      });
+    }
   }
 }
 
-// =========================  Delete User ========================================= //
-exports.deleteUser = (req, res) => {
-  const id = req.params.id;
-  let sql = `select * from users where id='${id}'`;
-  connection.query(sql, async (err, result) => {
-    const user = result.find((e) => e.id);
-    if (err) {
-      res.json({ err: err, status: 500, massage: "Internal Server Error" })
-    } else if (user === undefined) {
-      res.json({ massage: "no user id", status: 201 });
-    } else {
-      let public_id = user.cloudinary_id.replace('Store Mobile Server/users/g', '')
-      await cloudinary.uploader.destroy(public_id).then((res) => { imageUrl = res });
-      let sql = `delete from users where id='${id}'`;
-      connection.query(sql, (err, result) => {
-        if (err) {
-          res.json({ err: err, status: 500, massage: "Internal Server Error" })
-        } else {
-          res.json({ id: user.id, massage: "successfully Delete", status: 200 })
-        }
-      })
-    }
-  })
-}
-
-
-// =========================  Edit User ========================================= //
-
-exports.editUser = (req, res) => {
-  let id = req.body.id;
-  let name = req.body.name;
-  let email = req.body.email;
-  let phone = req.body.phone;
-  let authorization = req.body.authorization;
-  let image = req.file;
-  let cloudinary_id = null;
-  let sql = `select * from users where id='${id}'`;
-  connection.query(sql, async (err, result) => {
-    const user = result.find((e) => e.id);
-    if (err) {
-      res.json({ err: err, status: 500, massage: "Internal Server Error" })
-    } else if (user === undefined) {
-      res.json({ massage: "no user id", status: 201 });
-    } else {
-      if (image) {
-        let public_id = user.cloudinary_id.replace('Store Mobile Server/users/g', '')
-        await cloudinary.uploader.destroy(public_id).then((res) => {
-          imageUrl = res
-        })
-        image = await cloudinary.uploader.upload(req.file.path, { folder: "Store Mobile Server/users" });
-        cloudinary_id = image?.public_id;
-        image = image?.secure_url;
-      } else {
-        image = user.image;
-        cloudinary_id = user.cloudinary_id;
-      }
-      let sql = `update users set 
-              name = '${name}',
-              email = '${email}',
-              phone = '${phone}',
-              image = '${image}',
-              authorization = '${authorization}',
-              cloudinary_id = '${cloudinary_id}'
-              where id = '${id}'`;
-      connection.query(sql, (err, result) => {
-        let data = { name: name, email: email, image: image, phone: phone, authorization: authorization, cloudinary_id: cloudinary_id };
-        if (err) {
-          res.json({ err: err, status: 500, massage: "Internal Server Error" })
-        } else {
-          res.json({ massage: "successfully Edit", status: 200, result: data });
-        }
-      })
-    }
-  })
-}
-// =========================  update Password ========================================= //
-
-exports.updatePassword = (req, res) => {
-  let id = req.body.id;
-  let currentPassword = req.body.currentPassword
-  let password = req.body.password
-  let sql = `select * from users where id='${id}'`;
-  connection.query(sql, async (err, result) => {
-    const user = result.find((e) => e.id);
-    if (err) {
-      res.json({ err: err, status: 500, massage: "Internal Server Error" })
-    } else if (user === undefined) {
-      res.json({ massage: "no user id", status: 201 });
-    } else {
-      if (await bcrypt.compare(currentPassword, user.password)) {
-        password = bcrypt.hashSync(password, Number("salt"));
-        let sql = `update users set password = '${password}' where id = '${id}'`;
-        connection.query(sql, (err, result) => {
-          console.log(err)
-
-          if (err) {
-            res.json({ err: err, status: 500, massage: "Internal Server Error" })
-          } else {
-            res.json({ massage: "successfully Edit", status: 200 });
-          }
-        })
-      } else {
-        res.json({ massage: "You have entered invalid Password", status: 500 });
-
-      }
-    }
-  })
-}
-
-// =========================  Login ========================================= //
-
-exports.login = (req, res) => {
-  let email = req.body.email;
-  let password = req.body.password;
-
-  // if is empty Email and Password
-
-  if (email === "") {
-    res.json(error("Enter your Email"));
-  } else if (password === "") {
-    res.json(error("Enter your Password"));
-  } else {
-    const sql = `select * from users where email ='${email}' `;
-    connection.query(sql, async (err, result) => {
-      if (result.length === 0) {
-        res.json({ massage: "You have entered invalid Email", status: 500 });
-      } else {
-        const findUser = result.find((u) => u.id);
-        if (findUser) {
-          const id = findUser.id;
-          if (await bcrypt.compare(req.body.password, findUser.password)) {
-            const token = jwt.sign({ id }, "jwtSecret", { expiresIn: process.env.TOKEN_EXPIRATION });
-            res.json({ status: 200, massage: "Successfully", result: findUser, token: token });
-          } else {
-            res.json({ massage: "You have entered invalid Password", status: 201 });
-          }
-        }
-      }
-    });
-  }
-};
-
-// =========================  Search Users =================================== //
-
-exports.searchUser = (req, res) => {
-  let name = req.params.name;
-  let sql = 'SELECT * FROM users WHERE name LIKE "%' + name + '%" ';
-  connection.query(sql, (err, result) => {
-    if (result) {
-      const user = result.filter((e) => e.name.toUpperCase() !== -1);
-      if (user.length === 0) {
-        res.json({ massage: "no user name", status: 202 });
-      } else {
-        res.json({ status: 200, result: user });
-      }
-    }
-
-  });
-};
-
-
+module.exports = UserController;

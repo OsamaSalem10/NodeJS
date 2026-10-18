@@ -1,112 +1,165 @@
+// models/User.js
+
 const db = require("../config/db");
 
-const getUsers = (cb) => {
-  db.query("SELECT * FROM users", cb);
-};
-const getUser = (id, cb) => {
-  db.query("SELECT * FROM users WHERE id=?", [id], cb);
-};
-const createUser = (data, cb) => {
+class User {
+  constructor(
+    name,
+    email,
+    password,
+    phone,
+    location,
+    image,
+    image_public_id,
+    description
+  ) {
+    this.name = name;
+    this.email = email;
+    this.password = password;
+    this.phone = phone;
+    this.location = location;
+    this.image = image;
+    this.image_public_id = image_public_id;
+    this.description = description;
+  }
 
-  const sql = `
- INSERT INTO users
- (name,email,password,phone,image,image_public_id,location,description)
- VALUES (?,?,?,?,?,?,?,?)
- `;
+  // CREATE
+  async create() {
+    const sql = `
+      INSERT INTO users
+      (
+        name,
+        email,
+        password,
+        phone,
+        location,
+        image,
+        image_public_id,
+        description
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `;
 
-  db.query(sql, data, cb);
-};
+    const [result] = await db.promise().query(sql, [
+      this.name,
+      this.email,
+      this.password,
+      this.phone,
+      this.location,
+      this.image,
+      this.image_public_id,
+      this.description
+    ]);
 
-const getUserById = (id, cb) => {
-  db.query("SELECT * FROM users WHERE id=?", [id], cb);
-};
+    return result;
+  }
 
+  // READ ALL
+  static async findAll() {
+    const sql = `
+      SELECT
+        id,
+        name,
+        email,
+        phone,
+        location,
+        image,
+        image_public_id,
+        description,
+        created_at
+      FROM users
+      ORDER BY id DESC
+    `;
 
+    const [result] = await db.promise().query(sql);
 
-const deleteUser = (id, cb) => {
-  db.query("DELETE FROM users WHERE id=?", [id], cb);
-};
-const searchUsers = (keyword, cb) => {
-  const sql = `
- SELECT * FROM users
- WHERE name LIKE ?
- OR email LIKE ?
- OR phone LIKE ?
- OR location LIKE ?
- OR id LIKE ?
- `;
+    return result;
+  }
 
- 
-  const value = "%" + keyword + "%";
+  // READ ONE
+  static async findById(id) {
+    const sql = `
+      SELECT
+        id,
+        name,
+        email,
+        phone,
+        location,
+        image,
+        image_public_id,
+        description,
+        created_at
+      FROM users
+      WHERE id = ?
+    `;
 
-  db.query(sql, [value, value, value, value, value], cb);
-};
+    const [result] = await db.promise().query(sql, [id]);
 
-const getUserByEmail = (email, cb) => {
+    return result[0];
+  }
 
-  const sql = "SELECT * FROM users WHERE email=?"
+  // Find by email
+  static async findByEmail(email) {
+    const sql = `
+      SELECT *
+      FROM users
+      WHERE email = ?
+    `;
 
-  db.query(sql, [email], cb)
+    const [result] = await db.promise().query(sql, [email]);
 
+    return result[0];
+  }
+
+  // UPDATE
+  static async update(
+    id,
+    name,
+    email,
+    phone,
+    location,
+    image,
+    image_public_id,
+    description
+  ) {
+    const sql = `
+      UPDATE users
+      SET
+        name = ?,
+        email = ?,
+        phone = ?,
+        location = ?,
+        image = ?,
+        image_public_id = ?,
+        description = ?
+      WHERE id = ?
+    `;
+
+    const [result] = await db.promise().query(sql, [
+      name,
+      email,
+      phone,
+      location,
+      image,
+      image_public_id,
+      description,
+      id
+    ]);
+
+    return result;
+  }
+
+  // DELETE
+  static async delete(id) {
+    const sql = `
+      DELETE FROM users
+      WHERE id = ?
+    `;
+
+    const [result] = await db.promise().query(sql, [id]);
+
+    return result;
+  }
 }
-/* email with update */
-const updateUser = (data, id, cb) => {
-  const sql = `
-    UPDATE users
-    SET
-      name=?,
-      email=?,
-      phone=?,
-      location=?,
-      description=?,
-      image=?,
-      image_public_id=?
-    WHERE id=?
-  `;
 
-  db.query(sql, [...data, id], cb);
-};
-/* email not update */
-const updateWithoutEmail = (data, id, cb) => {
-  const sql = `
-    UPDATE users
-    SET
-      name=?,
-      phone=?,
-      location=?,
-      description=?,
-      image=?,
-      image_public_id=?
-    WHERE id=?
-  `;
-
-  db.query(sql, [...data, id], cb);
-};
-/* التحقق من الإيميل */
-const emailExists = (email, id, callback) => {
-  db.query(
-    "SELECT id FROM users WHERE email = ? AND id != ?",
-    [email, id],
-    callback
-  );
-};
-const findById = (id, callback) => {
-  db.query(
-    "SELECT * FROM users WHERE id = ?",
-    [id],
-    callback
-  );
-};
-module.exports = {
-  getUsers,
-  getUser,
-  createUser,
-  getUserById,
-  updateUser,
-  deleteUser,
-  searchUsers,
-  getUserByEmail,
-  emailExists,
-  updateWithoutEmail,
-  findById
-};
+module.exports = User;

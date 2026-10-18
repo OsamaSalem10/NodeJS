@@ -1,118 +1,345 @@
+const Category = require("../models/categories");
 const cloudinary = require("../config/cloudinary");
-const categoryModel = require("../models/categories");
-const { validationResult } = require("express-validator");
-exports.getAll = (req, res) => {
-  categoryModel.getCategories((err, data) => {
-    if (err) return res.json(err);
-    res.json(data);
-  });
-};
 
-exports.getOne = (req, res) => {
-  categoryModel.getCategory(req.params.id, (err, data) => {
-    if (err) return res.json(err);
-    res.json(data);
-  });
-};
+class CategoryController {
 
-exports.create = async (req, res) => {
-  try {
-    const { name ,status} = req.body;
-    const errors = validationResult(req);
+  // ================= CREATE ================= //
+  static async create(req, res) {
+    try {
+      const { name, status } = req.body;
 
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        errors: errors.array(),
-      });
-    }
-    let image = "";
-    let public_id = "";
-    if (req.file) {
-      const result = await cloudinary.uploader.upload(req.file.path, {
-        folder: "01_supermarket/categories",
-      });
-
-      image = result.secure_url
-      public_id = result.public_id
-    }
-    const data = [name, image, public_id, status];
-    categoryModel.createCategory(data, (err, result) => {
-      if (err) {
-        console.error(err);
-        return res.status(500).json({
-          message: "Database error",
-          error: err.message
+      // Validation
+      if (!name || !status) {
+        return res.status(400).json({
+          status: 400,
+          message: "Name and status are required"
         });
       }
-      res.json({
-        message: "Category created successfully"
-      });
-    });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({
-      message: "Internal server error",
-      error: error.message
-    });
-  };
-};
 
-exports.update = async (req, res) => {
-  try {
-    const id = req.params.id;
-    const { name, status } = req.body;
+      // Image required for CREATE
+      if (!req.file) {
+        return res.status(400).json({
+          status: 400,
+          message: "Image is required"
+        });
+      }
 
-    categoryModel.getCategory(id, async (err, data) => {
-      if (err) return res.status(500).json(err);
+      // Upload image
+      const uploadResult = await cloudinary.uploader.upload(
+        req.file.path,
+        {
+          folder: "01_supermarket/categories",
+          resource_type: "image",
+          timeout: 120000
+        }
+      );
 
-      let image = data[0].image;
-      let public_id = data[0].image_public_id;
+      const image = uploadResult.secure_url;
+      const image_public_id = uploadResult.public_id;
 
-      if (req.file) {
-        if (public_id) {
-          await cloudinary.uploader.destroy(public_id);
+      try {
+        // IMPORTANT:
+        // constructor(name, image, image_public_id, status)
+        const category = new Category(
+          name,
+          image,
+          image_public_id,
+          status
+        );
+
+        const result = await category.create();
+
+        return res.status(201).json({
+          status: 201,
+          message: "Category created successfully",
+          category: {
+            id: result.insertId,
+            name,
+            image,
+            image_public_id,
+            status
+          }
+        });
+
+      } catch (dbError) {
+
+        // DB failed -> remove uploaded image
+        if (image_public_id) {
+          await cloudinary.uploader.destroy(image_public_id);
         }
 
-        const result = await cloudinary.uploader.upload(req.file.path, {
-          folder: "01_supermarket/categories",
-        });
-
-        image = result.secure_url;
-        public_id = result.public_id;
+        throw dbError;
       }
 
-      const userData = [name, image, public_id, status];
+    } catch (error) {
+      console.error("Create Category Error:", error);
 
-      categoryModel.updateCategory(userData, id, (err, result) => {
-        if (err) return res.status(500).json(err);
-
-        res.json({
-          message: "Category updated",
-        });
+      return res.status(500).json({
+        status: 500,
+        message: "Error creating category",
+        error: error.message
       });
-    });
-  } catch (err) {
-    res.status(500).json(err);
+    }
+  }
+
+
+  // ================= READ ALL ================= //
+  static async getAll(req, res) {
+    try {
+
+      const categories = await Category.findAll();
+
+      return res.status(200).json({
+        status: 200,
+        message: "Categories retrieved successfully",
+        result: categories
+      });
+
+    } catch (error) {
+
+      console.error("Get Categories Error:", error);
+
+      return res.status(500).json({
+        status: 500,
+        message: "Error retrieving categories",
+        error: error.message
+      });
+    }
+  }
+
+
+  // ================= READ ONE ================= //
+  static async getOne(req, res) {
+    try {
+
+      const { id } = req.params;
+
+      if (!id || isNaN(id)) {
+        return res.status(400).json({
+          status: 400,
+          message: "Invalid category id"
+        });
+      }
+
+      const category = await Category.findById(id);
+
+      if (!category) {
+        return res.status(404).json({
+          status: 404,
+          message: "Category not found"
+        });
+      }
+
+      return res.status(200).json({
+        status: 200,
+        message: "Category retrieved successfully",
+        category
+      });
+
+    } catch (error) {
+
+      console.error("Get Category Error:", error);
+
+      return res.status(500).json({
+        status: 500,
+        message: "Error retrieving category",
+        error: error.message
+      });
+    }
+  }
+
+
+  // ================= UPDATE ================= //
+  static async update(req, res) {
+    try {
+
+      const { id } = req.params;
+      const { name, status } = req.body;
+
+      if (!id || isNaN(id)) {
+        return res.status(400).json({
+          status: 400,
+          message: "Invalid category id"
+        });
+      }
+
+      if (!name || !status) {
+        return res.status(400).json({
+          status: 400,
+          message: "Name and status are required"
+        });
+      }
+
+      // Get old category
+      const oldCategory = await Category.findById(id);
+
+      if (!oldCategory) {
+        return res.status(404).json({
+          status: 404,
+          message: "Category not found"
+        });
+      }
+
+      // Keep old image by default
+      let image = oldCategory.image;
+      let image_public_id = oldCategory.image_public_id;
+
+      // Used if a new image was uploaded
+      let newImagePublicId = null;
+
+
+      // ================= NEW IMAGE ================= //
+
+      if (req.file) {
+
+        const uploadResult = await cloudinary.uploader.upload(
+          req.file.path,
+          {
+            folder: "01_supermarket/categories",
+            resource_type: "image",
+            timeout: 120000
+          }
+        );
+
+        image = uploadResult.secure_url;
+        image_public_id = uploadResult.public_id;
+
+        newImagePublicId = uploadResult.public_id;
+      }
+
+
+      try {
+
+        // IMPORTANT:
+        // constructor(name, image, image_public_id, status)
+
+        const category = new Category(
+          name,
+          image,
+          image_public_id,
+          status
+        );
+
+        const result = await category.update(id);
+
+        if (result.affectedRows === 0) {
+
+          // DB didn't update
+          if (newImagePublicId) {
+            await cloudinary.uploader.destroy(newImagePublicId);
+          }
+
+          return res.status(404).json({
+            status: 404,
+            message: "Category not found"
+          });
+        }
+
+      } catch (dbError) {
+
+        // DB failed -> remove NEW image
+        if (newImagePublicId) {
+          await cloudinary.uploader.destroy(newImagePublicId);
+        }
+
+        throw dbError;
+      }
+
+
+      // ================= DELETE OLD IMAGE ================= //
+
+      // Only delete old image if a NEW image was uploaded
+      if (
+        req.file &&
+        oldCategory.image_public_id
+      ) {
+        await cloudinary.uploader.destroy(
+          oldCategory.image_public_id
+        );
+      }
+
+
+      return res.status(200).json({
+        status: 200,
+        message: "Category updated successfully",
+        category: {
+          id: Number(id),
+          name,
+          image,
+          image_public_id,
+          status
+        }
+      });
+
+    } catch (error) {
+
+      console.error("Update Category Error:", error);
+
+      return res.status(500).json({
+        status: 500,
+        message: "Error updating category",
+        error: error.message
+      });
+    }
+  }
+
+
+  // ================= DELETE ================= //
+  static async delete(req, res) {
+    try {
+
+      const { id } = req.params;
+
+      if (!id || isNaN(id)) {
+        return res.status(400).json({
+          status: 400,
+          message: "Invalid category id"
+        });
+      }
+
+      // Get category first
+      const category = await Category.findById(id);
+
+      if (!category) {
+        return res.status(404).json({
+          status: 404,
+          message: "Category not found"
+        });
+      }
+
+      // Delete from database first
+      const result = await Category.delete(id);
+
+      if (result.affectedRows === 0) {
+        return res.status(404).json({
+          status: 404,
+          message: "Category not found"
+        });
+      }
+
+      // Delete image from Cloudinary
+      if (category.image_public_id) {
+        await cloudinary.uploader.destroy(
+          category.image_public_id
+        );
+      }
+
+      return res.status(200).json({
+        status: 200,
+        message: "Category deleted successfully"
+      });
+
+    } catch (error) {
+
+      console.error("Delete Category Error:", error);
+
+      return res.status(500).json({
+        status: 500,
+        message: "Error deleting category",
+        error: error.message
+      });
+    }
   }
 }
-exports.delete = (req, res) => {
-  const id = req.params.id;
 
-  categoryModel.getCategory(id, async (err, data) => {
-    if (err) return res.status(500).json(err);
-
-    const public_id = data[0].image_public_id;
-
-    if (public_id) {
-      await cloudinary.uploader.destroy(public_id);
-    }
-
-    categoryModel.deleteCategory(id, (err, result) => {
-      if (err) return res.status(500).json(err);
-
-      res.json({
-        message: "category deleted",
-      });
-    });
-  });
-};
+module.exports = CategoryController;

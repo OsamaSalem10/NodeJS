@@ -43,11 +43,9 @@ CREATE TABLE wishlist (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id int NOT NULL,
     product_id int NOT NULL,
-     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
-
     UNIQUE(user_id, product_id)
-
 );
 
 CREATE TABLE carts (
