@@ -1,0 +1,4 @@
+$kind: http-request
+url: http://localhost:5000/categories/6aee3cce83f6454d987878f4
+method: DELETE
+order: 4000

@@ -1,0 +1,21 @@
+$kind: http-request
+url: http://localhost:5000/products
+method: POST
+body:
+  type: json
+  content: "{\r
+
+    \    \"category_id\":\"6aee34b483f6454d987878f3\",\r
+
+    \    \"name\":\",jjjj\",\r
+
+    \"unit\":\"kg\",\r
+
+    \"Received\" :100,\r
+
+    \"Sale\":50    \r
+
+    \r
+
+    }"
+order: 2000

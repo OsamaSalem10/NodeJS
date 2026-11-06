@@ -1,0 +1,7 @@
+$kind: http-request
+url: http://localhost:5000/categories
+method: POST
+body:
+  type: json
+  content: "{\r\n \"name\": \"kjk\"\r\n}"
+order: 2000
